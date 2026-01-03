@@ -1,0 +1,19 @@
+{
+    "name": "phparch/phparch",
+    "description": "A PHPUnit-inspired tool for validating project architecture",
+    "type": "library",
+    "license": "GNU General Public License v3.0",
+    "require": {
+        "php": ">=8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "PhpArch\\": "src/"
+        }
+    },
+    "bin": [
+        "bin/phparch"
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

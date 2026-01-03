@@ -1,0 +1,95 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use PhpArch\TestRunner;
+use PhpArch\Enum\Verbosity;
+
+// Default test directory
+$testDirectory = __DIR__ . '/../tests/Architecture';
+
+// Parse command line arguments
+$options = getopt('v::', ['tests-dir:', 'verbose::', 'color', 'no-color', 'coverage::']);
+
+if (isset($options['tests-dir'])) {
+    $testDirectory = $options['tests-dir'];
+    // Convert relative paths to absolute
+    if (!str_starts_with($testDirectory, '/')) {
+        $testDirectory = getcwd() . '/' . $testDirectory;
+    }
+}
+
+// Determine verbosity level
+$verbosity = Verbosity::NONE;
+// Count -v flags in argv (handles -v, -vv, -vvv, --vv, ---v)
+$vCount = 0;
+foreach ($argv as $arg) {
+    if ($arg === '-v' || $arg === '--verbose') {
+        $vCount = max($vCount, 1);
+    } elseif (preg_match('/^-v+$/', $arg)) {
+        // Match -vv, -vvv, etc. (standard convention)
+        $vCount = max($vCount, strlen($arg) - 1); // Subtract 1 for the leading dash
+    } elseif (preg_match('/^--vv+$/', $arg)) {
+        // Match --vv, --vvv, etc.
+        $vCount = max($vCount, strlen($arg) - 2); // Subtract 2 for the leading dashes
+    } elseif (preg_match('/^---v+$/', $arg)) {
+        // Match ---v, ---vv, etc.
+        $vCount = max($vCount, strlen($arg) - 3); // Subtract 3 for the leading dashes
+    }
+}
+
+// Set verbosity based on count
+if ($vCount >= 3) {
+    $verbosity = Verbosity::DEBUG;
+} elseif ($vCount === 2) {
+    $verbosity = Verbosity::VERY_VERBOSE;
+} elseif ($vCount === 1) {
+    $verbosity = Verbosity::VERBOSE;
+}
+
+// Determine color setting (default: auto-detect based on terminal)
+$useColors = null; // null means auto-detect
+if (isset($options['color'])) {
+    $useColors = true;
+} elseif (isset($options['no-color'])) {
+    $useColors = false;
+} else {
+    // Auto-detect: check if stdout is a terminal and supports colors
+    $useColors = function_exists('posix_isatty') && posix_isatty(STDOUT);
+}
+
+// Determine coverage output directory
+$coverageOutputDir = null;
+if (isset($options['coverage'])) {
+    if ($options['coverage'] === false || $options['coverage'] === '') {
+        // --coverage without value, use default
+        $coverageOutputDir = getcwd() . '/coverage';
+    } else {
+        // --coverage=path
+        $coverageOutputDir = $options['coverage'];
+        // Convert relative paths to absolute
+        if (!str_starts_with($coverageOutputDir, '/')) {
+            $coverageOutputDir = getcwd() . '/' . $coverageOutputDir;
+        }
+    }
+}
+
+// Ensure autoloader can find classes
+// We need to load the project's autoloader if it exists
+$projectAutoloader = getcwd() . '/vendor/autoload.php';
+
+if (file_exists($projectAutoloader)) {
+    require_once $projectAutoloader;
+}
+
+// Run the tests
+$runner = new TestRunner($testDirectory, $verbosity, $useColors, $coverageOutputDir);
+$reporter = $runner->run();
+
+// Report results
+$reporter->report();
+
+// Exit with appropriate code
+exit($reporter->hasFailures() ? 1 : 0);
+

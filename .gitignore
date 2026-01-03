@@ -1,0 +1,6 @@
+vendor/
+build/
+tests/
+build-phar.php
+build-stub.php
+phparch.phar
